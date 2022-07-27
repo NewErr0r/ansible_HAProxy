@@ -1,0 +1,53 @@
+---
+- name: Deploy HAProxy on CentOS
+  hosts: Centos
+  become: true 
+
+  vars:
+    path_download: "/root" 
+    repo: "http://www.haproxy.org/download/2.0/src/haproxy-2.0.29.tar.gz"   
+
+  tasks: 
+    - name: Install packages for HAProxy
+      dnf:
+        name: '{{ packages }}' 
+        state: latest
+      vars:
+        packages:
+          - gcc 
+          - pcre-devel 
+          - tar 
+          - make
+
+    - name: Download HAProxy on official repo
+      get_url:
+        url: '{{ repo }}'
+        dest: '{{ path_download }}'
+
+    - name: Unpacking the archive HAProxy
+      unarchive:
+        src: haproxy-2.0.29.tar.gz
+        dest: '{{ path_download }}'
+        remote_src: yes
+
+    - name: Install HAProxy
+      shell:  |
+        cd haproxy-2.0.29
+        make TARGET=linux-glibc
+        make install
+
+    - name: Create directory for HAProxy
+      file:
+        path: '{{ item }}'
+        state: directory
+        recurse: yes 
+      loop: 
+        - /etc/haproxy
+        - /var/lib/haproxy 
+
+    - name: Started HAProxy
+      shell:  | 
+        cp {{ path_download }}/haproxy-2.0.29/examples/haproxy.init /etc/init.d/haproxy
+        chmod 755 /etc/init.d/haproxy
+        systemctl daemon-reload 
+        chkconfig haproxy on
